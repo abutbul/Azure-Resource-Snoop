@@ -7,7 +7,6 @@ This application is designed to help users gather all resources under their Azur
 - **AzureLogin.ps1**: Handles authentication with Azure, ensuring the user is logged in and has the necessary permissions to access Azure resources.
 - **CheckDependencies.ps1**: Checks for any dependencies required by the application, ensuring all necessary modules and tools are installed before running the main scripts.
 - **GenerateCSVs.ps1**: Generates CSV files from Azure resources, collecting data from various Azure services and formatting it for further processing.
-- **get-usage.ps1**: Retrieves usage data from Azure resources, helping to understand the utilization of different services and resources.
 - **MainMenu.ps1**: Serves as the main entry point for the application, providing a menu-driven interface for users to navigate through different functionalities.
 - **ProcessResources.ps1**: Processes Azure resources, merges Resource Graph data with the service map, and exports detailed JSON files for each resource.
 - **PseudoCostCalculations.ps1**: Contains functions to estimate the pseudo cost of running data collection operations.
@@ -20,15 +19,6 @@ This application is designed to help users gather all resources under their Azur
 2. Clone the repository to your local machine.
 3. Navigate to the project directory.
 4. Run `MainMenu.ps1` to start the application and install any required dependencies.
-
-## How and what
-
-1. **Authentication**: Run `AzureLogin.ps1` to authenticate with Azure.
-2. **Check Dependencies**: Execute `CheckDependencies.ps1` to ensure all required dependencies are installed.
-3. **Generate CSVs**: Use `GenerateCSVs.ps1` to generate CSV files from Azure resources.
-4. **Retrieve Usage Data**: Run `get-usage.ps1` to get usage data from Azure resources.
-5. **Process Resources**: Execute `ProcessResources.ps1` to process and prepare Azure resources for CSV generation, merge Resource Graph data, and export detailed JSON files.
-6. **Main Menu**: Use `MainMenew.ps1` to navigate through the application's functionalities.
 
 ## Features
 
