@@ -16,7 +16,7 @@ This application is designed to help users gather all resources under their Azur
 
 ## Installation Instructions
 
-1. Ensure you have PowerShell installed on your system.
+1. Ensure you have PowerShell installed on your system (tested with PowerShell 5 through 7).
 2. Clone the repository to your local machine.
 3. Navigate to the project directory.
 4. Run `MainMenu.ps1` to start the application and install any required dependencies.
