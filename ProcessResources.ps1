@@ -115,11 +115,18 @@ try {
     # Process individual resources
     $allRelationships = @()
     $processedResources = @()
+    $skippedResources = @()
+    $duplicateResources = @()
     foreach ($resource in $serviceMap) {
         $resourceType = $resource.type.ToLower()
         $fileName = "$($resource.name)_details.json"
         $outputPath = Join-Path $jsonDir $fileName
-        
+
+        if ($processedResources | Where-Object { $_.name -eq $resource.name -and $_.resourceGroup -eq $resource.resourceGroup }) {
+            $duplicateResources += $resource
+            continue
+        }
+
         try {
             $details = switch -Wildcard ($resourceType) {
                 "*networksecuritygroups*" {
@@ -190,8 +197,7 @@ try {
             $warningMessage = "Failed to get details for resource: $($resource.name). Error: $_"
             Write-Warning $warningMessage
             Write-Message -message $warningMessage -type "WARNING"
-            # Add the resource to processed resources even if details retrieval failed
-            $processedResources += $resource
+            $skippedResources += $resource
         }
     }
 
@@ -224,6 +230,21 @@ try {
     Write-Host "`nResource processing completed"
     Write-Message -message "Resource processing completed" -type "INFO"
     Write-Host "Resource mapping and details are available in: $jsonDir"
+
+    # Reporting
+    Write-Host "`nSummary Report:"
+    Write-Host "Total resources in service map: $($serviceMap.Count)"
+    Write-Host "Processed resources: $($processedResources.Count)"
+    Write-Host "Skipped resources: $($skippedResources.Count)"
+    Write-Host "Duplicate resources: $($duplicateResources.Count)"
+    if ($skippedResources.Count -gt 0) {
+        Write-Host "`nSkipped Resources:"
+        $skippedResources | ForEach-Object { Write-Host " - $($_.name) in $($_.resourceGroup)" }
+    }
+    if ($duplicateResources.Count -gt 0) {
+        Write-Host "`nDuplicate Resources:"
+        $duplicateResources | ForEach-Object { Write-Host " - $($_.name) in $($_.resourceGroup)" }
+    }
 }
 catch {
     $errorMessage = "Failed to process resources: $_"
