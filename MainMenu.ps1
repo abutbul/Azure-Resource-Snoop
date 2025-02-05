@@ -82,6 +82,7 @@ function Show-MainMenu {
             "Authenticate with Azure",
             "Generate Basic CSVs (Service Map and User Roles)",
             "Process Resources (Generate Detailed JSON Files)",
+            "Process Skipped Resources",  # New menu option
             "Exit"
         )
 
@@ -143,6 +144,28 @@ function Show-MainMenu {
                     $global:LastAction = "Process Resources"
                     $global:LastOutcome = "Error: $($_.Exception.Message)"
                     Write-Error "Error in Process Resources: $_"
+                    Show-MainMenu -recursionCount ($recursionCount + 1)
+                }
+            }
+            "Process Skipped Resources" {  # New case for processing skipped resources
+                try {
+                    & .\ProcessSkippedResources.ps1
+                    if ($LASTEXITCODE -eq 2) {
+                        $global:LastAction = "Process Skipped Resources"
+                        $global:LastOutcome = "Cancelled by user"
+                    } elseif ($LASTEXITCODE -eq 0) {
+                        $global:LastAction = "Process Skipped Resources"
+                        $global:LastOutcome = "Success"
+                    } else {
+                        $global:LastAction = "Process Skipped Resources"
+                        $global:LastOutcome = "Failed"
+                    }
+                    Show-MainMenu -recursionCount ($recursionCount + 1)
+                }
+                catch {
+                    $global:LastAction = "Process Skipped Resources"
+                    $global:LastOutcome = "Error: $($_.Exception.Message)"
+                    Write-Error "Error in Process Skipped Resources: $_"
                     Show-MainMenu -recursionCount ($recursionCount + 1)
                 }
             }
