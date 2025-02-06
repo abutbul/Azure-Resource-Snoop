@@ -2,8 +2,7 @@
 . "$PSScriptRoot\PseudoCostCalculations.ps1"
 . "$PSScriptRoot\ExportFunctions.ps1"
 . "$PSScriptRoot\LoggingFunctions.ps1"
-
-
+. "$PSScriptRoot\ResourceProcessingFunctions.ps1"
 
 # Main execution block
 try {
@@ -83,147 +82,82 @@ try {
     # Set global confirmation mode based on user input
     $confirmationMode = $confirmation.ToLower()
 
-    # Process role assignments with confirmation if needed
-    $roleAssignments = $null
-    if (Confirm-Costs -operation "Retrieve role assignments" -resourceType 'roleassignments' -confirmationMode $confirmationMode) {
-        try {
-            Write-Message -message "Retrieving role assignments..."
-            Write-Host "Retrieving role assignments..."
-            $roleAssignmentsResult = az role assignment list --all 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                $roleAssignments = $roleAssignmentsResult | ConvertFrom-Json
-                Export-JsonToFile -Data $roleAssignments -FilePath (Join-Path $jsonDir "RoleAssignments_Detailed.json") -Description "role assignments"
-            } else {
-                $warningMessage = "Failed to get role assignments: $roleAssignmentsResult"
-                Write-Warning $warningMessage
-                Write-Message -message $warningMessage -type "WARNING"
-            }
-        }
-        catch {
-            $warningMessage = "Failed to process role assignments: $_"
-            Write-Warning $warningMessage
-            Write-Message -message $warningMessage -type "WARNING"
-        }
-    } else {
-        Write-Message -message "Skipping role assignments processing..." -type "INFO"
-        Write-Host "Skipping role assignments processing..."
-    }
-
     # Increase the depth limit for JSON serialization
     $depthLimit = 10
+
+    # Define refresh interval in days (0 to refresh all resources)
+    $refreshIntervalDays = 30
 
     # Process individual resources
     $allRelationships = @()
     $processedResources = @()
+    $skippedResources = @()
+    $mappedResources = @()
     foreach ($resource in $serviceMap) {
-        $resourceType = $resource.type.ToLower()
-        $fileName = "$($resource.name)_details.json"
-        $outputPath = Join-Path $jsonDir $fileName
-        
-        try {
-            $details = switch -Wildcard ($resourceType) {
-                "*networksecuritygroups*" {
-                    if (-not (Confirm-Costs -operation "Get NSG rules for $($resource.name)" -resourceType 'networksecuritygroups' -confirmationMode $confirmationMode)) {
-                        Write-Host "Skipping NSG rules for $($resource.name) due to user choice"
-                        continue
-                    }
-                    $rules = az network nsg rule list --resource-group $resource.resourceGroup --nsg-name $resource.name 2>&1
-                    if ($LASTEXITCODE -ne 0) { throw $rules }
-                    $rules | ConvertFrom-Json
-                }
-                "*virtualnetworks*" {
-                    if (-not (Confirm-Costs -operation "Get VNet details for $($resource.name)" -resourceType 'virtualnetworks' -confirmationMode $confirmationMode)) {
-                        Write-Host "Skipping VNet details for $($resource.name) due to user choice"
-                        continue
-                    }
-                    $vnet = az network vnet show --resource-group $resource.resourceGroup --name $resource.name 2>&1
-                    if ($LASTEXITCODE -ne 0) { throw $vnet }
-                    $vnet | ConvertFrom-Json
-                }
-                "*virtualmachines*" {
-                    if (-not (Confirm-Costs -operation "Get VM details for $($resource.name)" -resourceType 'virtualmachines' -confirmationMode $confirmationMode)) {
-                        Write-Host "Skipping VM details for $($resource.name) due to user choice"
-                        continue
-                    }
-                    $vm = az vm show --resource-group $resource.resourceGroup --name $resource.name 2>&1
-                    if ($LASTEXITCODE -ne 0) { throw $vm }
-                    $vm | ConvertFrom-Json
-                }
-                default {
-                    if (-not (Confirm-Costs -operation "Get details for $($resource.name)" -resourceType $resourceType -confirmationMode $confirmationMode)) {
-                        Write-Host "Skipping details for $($resource.name) due to user choice"
-                        continue
-                    }
-                    $resourceDetails = az resource show --name $resource.name --resource-type $resource.type --resource-group $resource.resourceGroup 2>&1
-                    if ($LASTEXITCODE -ne 0) { throw $resourceDetails }
-                    $resourceDetails | ConvertFrom-Json
-                }
+        $result = Process-Resource -resource $resource -jsonDir $jsonDir -confirmationMode $confirmationMode -depthLimit $depthLimit -refreshIntervalDays $refreshIntervalDays
+        switch ($result.Status) {
+            "Processed" {
+                $processedResources += $result.Resource
+                $allRelationships += $result.Relationships
+                Write-Message -message "Successfully processed resource: $($result.Resource.name)" -type "INFO"
+                Write-Host "Successfully processed resource: $($result.Resource.name)"
             }
-            
-            if ($null -ne $details) {
-                # Extract and store relationships
-                $relationships = @()
-                if ($details.properties.PSObject.Properties.Name -contains "networkInterfaces") {
-                    $relationships += @{
-                        sourceId = $resource.name
-                        targetId = $details.properties.networkInterfaces.id
-                        type = "uses"
-                    }
-                }
-                if ($details.properties.PSObject.Properties.Name -contains "virtualNetwork") {
-                    $relationships += @{
-                        sourceId = $resource.name
-                        targetId = $details.properties.virtualNetwork.id
-                        type = "belongs_to"
-                    }
-                }
-                $allRelationships += $relationships
-
-                Export-JsonToFile -Data $details -FilePath $outputPath -Description "resource details for $($resource.name)"
-                $resource | Add-Member -NotePropertyName "DetailedProperties" -NotePropertyValue ($details | ConvertTo-Json -Depth $depthLimit -Compress) -Force
-                $processedResources += $resource
-                Write-Message -message "Successfully processed resource: $($resource.name)" -type "INFO"
-                Write-Host "Successfully processed resource: $($resource.name)"
+            "Skipped" {
+                $mappedResources += $result.Resource
+                Write-Message -message "[INFO] Skipped - file exists for $($result.Resource.name)" -type "INFO"
             }
-        }
-        catch {
-            $warningMessage = "Failed to get details for resource: $($resource.name). Error: $_"
-            Write-Warning $warningMessage
-            Write-Message -message $warningMessage -type "WARNING"
-            # Add the resource to processed resources even if details retrieval failed
-            $processedResources += $resource
+            "Failed" {
+                $skippedResources += $result.Resource
+            }
         }
     }
 
     # Export relationships for visualization (only for successfully processed resources)
-    $resourceMapping = @{
-        resources = $processedResources | ForEach-Object {
-            @{
-                id = $_.name
-                type = $_.type
-                resourceGroup = $_.resourceGroup
-                location = $_.location
-                properties = if ($_.DetailedProperties) { 
-                    $_.DetailedProperties | ConvertFrom-Json 
-                } else { 
-                    $null 
+    if ($processedResources.Count -gt 0) {
+        $resourceMapping = @{
+            resources = $processedResources + $mappedResources | ForEach-Object {
+                @{
+                    id = $_.name
+                    type = $_.type
+                    resourceGroup = $_.resourceGroup
+                    location = $_.location
+                    properties = if ($_.DetailedProperties) { 
+                        $_.DetailedProperties | ConvertFrom-Json 
+                    } else { 
+                        $null 
+                    }
                 }
             }
+            relationships = $allRelationships
+            metadata = @{
+                subscriptionId = $subscriptionId
+                generatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+                resourceCount = $processedResources.Count + $mappedResources.Count
+                relationshipCount = $allRelationships.Count
+            }
         }
-        relationships = $allRelationships
-        metadata = @{
-            subscriptionId = $subscriptionId
-            generatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-            resourceCount = $processedResources.Count
-            relationshipCount = $allRelationships.Count
-        }
+
+        Export-JsonToFile -Data $resourceMapping -FilePath (Join-Path $jsonDir "AzureResourceMapping.json") -Description "complete resource mapping"
+
+        Write-Host "`nResource processing completed"
+        Write-Message -message "Resource processing completed" -type "INFO"
+        Write-Host "Resource mapping and details are available in: $jsonDir"
+    } else {
+        Write-Host "`nNo resources were processed, skipping relationship export."
+        Write-Message -message "No resources were processed, skipping relationship export." -type "INFO"
     }
 
-    Export-JsonToFile -Data $resourceMapping -FilePath (Join-Path $jsonDir "AzureResourceMapping.json") -Description "complete resource mapping"
-
-    Write-Host "`nResource processing completed"
-    Write-Message -message "Resource processing completed" -type "INFO"
-    Write-Host "Resource mapping and details are available in: $jsonDir"
+    # Reporting
+    Write-Host "`nSummary Report:"
+    Write-Host "Total resources in service map: $($serviceMap.Count)"
+    Write-Host "Processed resources: $($processedResources.Count)"
+    Write-Host "Skipped resources: $($skippedResources.Count)"
+    if ($skippedResources.Count -gt 0) {
+        Write-Host "`nSkipped Resources:"
+        $skippedResources | ForEach-Object { Write-Host " - $($_.name) in $($_.resourceGroup)" }
+        $skippedResources | Export-Csv -Path (Join-Path $csvDir "SkippedResources.csv") -NoTypeInformation
+        Write-Host "`nSkipped resources have been exported to: $(Join-Path $csvDir "SkippedResources.csv")"
+    }
 }
 catch {
     $errorMessage = "Failed to process resources: $_"

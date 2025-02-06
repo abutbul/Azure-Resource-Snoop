@@ -1,6 +1,6 @@
 # Azure Resource Snoop (Mapping and Topology Tool)
 
-This application is designed to help users gather all resources under their Azure account, map them in a relational manner, and generate dynamic reports. It provides a comprehensive workflow for generating CSV files, processing resource data, and exporting detailed JSON files for visualization and reporting.
+This application helps users gather all resources under their Azure account, map them relationally, and generate dynamic reports. It provides a comprehensive workflow for generating CSV files, processing resource data, and exporting detailed JSON files for visualization and reporting.
 
 ## File Descriptions
 
@@ -9,6 +9,7 @@ This application is designed to help users gather all resources under their Azur
 - **GenerateCSVs.ps1**: Generates CSV files from Azure resources, collecting data from various Azure services and formatting it for further processing.
 - **MainMenu.ps1**: Serves as the main entry point for the application, providing a menu-driven interface for users to navigate through different functionalities.
 - **ProcessResources.ps1**: Processes Azure resources, merges Resource Graph data with the service map, and exports detailed JSON files for each resource.
+- **ProcessSkippedResources.ps1**: Processes resources that were previously skipped, attempting to gather their details again and export them to JSON files.
 - **PseudoCostCalculations.ps1**: Contains functions to estimate the pseudo cost of running data collection operations.
 - **ExportFunctions.ps1**: Includes functions to export data to JSON files.
 - **LoggingFunctions.ps1**: Provides logging functionalities to record messages and errors during script execution.
@@ -24,7 +25,11 @@ This application is designed to help users gather all resources under their Azur
 
 ### Menu-Driven Interface
 
-The application leverages a menu-driven approach using PowerShell, specifically utilizing the [PSMenu](https://www.powershellgallery.com/packages/PSMenu) module, making it user-friendly and easy to navigate. The main menu provides options to check dependencies, authenticate with Azure, generate CSVs, process resources, and more. For more information on PSMenu, visit the [GitHub repository](https://github.com/Sebazzz/PSMenu).
+The application leverages a menu-driven approach using PowerShell, specifically utilizing the [PSMenu](https://www.powershellgallery.com/packages/PSMenu) module, making it user-friendly and easy to navigate. The main menu provides options to check dependencies, authenticate with Azure, generate CSVs, process resources, process skipped resources, and more. For more information on PSMenu, visit the [GitHub repository](https://github.com/Sebazzz/PSMenu).
+
+### Resource Refresh Interval
+
+The application checks the age of existing resource details and skips processing if the details are within a specified refresh interval (default is 30 days). This helps in optimizing performance and avoiding unnecessary API calls.
 
 ### Comprehensive Logging
 
@@ -43,7 +48,7 @@ The application includes robust logging functionalities to record messages and e
 
 ## Contact Information
 
-For any questions or support, please contact the project maintainers at issues page.
+For any questions or support, please contact the project maintainers via the issues page.
 
 ## Additional Resources
 
