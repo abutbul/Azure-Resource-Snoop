@@ -80,7 +80,7 @@ function Show-MainMenu {
         $menuItems = @(
             "Check Dependencies",
             "Authenticate with Azure",
-            "Generate Basic CSVs (Service Map and User Roles)",
+            "Generate Basic CSVs (Service Map, User Roles, Azure Resource Graph)",
             "Process Resources (Generate Detailed JSON Files)",
             "Process Skipped Resources",  # New menu option
             "Exit"
@@ -113,7 +113,7 @@ function Show-MainMenu {
                     exit 1
                 }
             }
-            "Generate Basic CSVs (Service Map and User Roles)" { 
+            "Generate Basic CSVs (Service Map, User Roles, Azure Resource Graph)" { 
                 try {
                     & .\GenerateCSVs.ps1
                     $global:LastAction = "Generate CSVs"
