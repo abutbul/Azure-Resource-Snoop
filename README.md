@@ -2,7 +2,7 @@
 
 > **Note:** This is an educational project. If you are looking for a production-grade mature product, check out [Azure Resource Inventory (ARI)](https://github.com/microsoft/ARI).
 
-This application helps users gather all resources under their Azure account, map them relationally, and generate dynamic reports. It provides a comprehensive workflow for generating CSV files, processing resource data, and exporting detailed JSON files for visualization and reporting.
+This application helps users gather all resources under their Azure account(Single Tenant only), map them relationally, and generate dynamic reports. It provides a comprehensive workflow for generating CSV files, processing resource data, and exporting detailed JSON files for visualization and reporting.
 
 ## File Descriptions
 
@@ -60,7 +60,8 @@ For any questions or support, please contact the project maintainers via the iss
 
 ## TBD Features
 
-- [ ] Create ETL.
+- [ ] Support Multi tenancy.
+- [ ] Create ETL flow.
 - [ ] Visualization.
 - [ ] Interactive Reports.
 - [ ] Optimize performance for large datasets.
